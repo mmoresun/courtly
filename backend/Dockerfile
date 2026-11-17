@@ -3,4 +3,4 @@ WORKDIR /app
 COPY package*.json ./
 RUN npm ci
 COPY . .
-CMD ["npm", "run", "dev"]
+CMD ["sh", "-c", "npm run migrate && npm run dev"]

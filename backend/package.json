@@ -5,13 +5,15 @@
   "main": "index.js",
   "scripts": {
     "dev": "tsx watch src/index.ts",
-    "typecheck": "tsc --noEmit"
+    "typecheck": "tsc --noEmit",
+    "migrate": "node-pg-migrate up"
   },
   "keywords": [],
   "author": "",
   "license": "ISC",
   "dependencies": {
     "express": "^5.3.0",
+    "node-pg-migrate": "^9.0.0",
     "pg": "^8.23.1"
   },
   "devDependencies": {
