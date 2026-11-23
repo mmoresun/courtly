@@ -45,14 +45,17 @@ export interface Booking {
   totalPriceCents: number;
 }
 
-/** Columns of a booking, with times turned into facility-local date/hour. $tz is the time zone param. */
-function bookingColumns(tz: string): string {
+/**
+ * Columns of a booking, with times turned into facility-local date/hour.
+ * `tz` is the time zone placeholder ("$3"), `t` the table name or alias.
+ */
+function bookingColumns(tz: string, t = "bookings"): string {
   return `
-    id, court_id AS "courtId", user_id AS "userId",
-    to_char(start_at AT TIME ZONE ${tz}, 'YYYY-MM-DD') AS date,
-    extract(hour FROM start_at AT TIME ZONE ${tz})::int AS "startHour",
-    (extract(epoch FROM end_at - start_at) / 3600)::int AS hours,
-    status, total_price_cents AS "totalPriceCents"`;
+    ${t}.id, ${t}.court_id AS "courtId", ${t}.user_id AS "userId",
+    to_char(${t}.start_at AT TIME ZONE ${tz}, 'YYYY-MM-DD') AS date,
+    extract(hour FROM ${t}.start_at AT TIME ZONE ${tz})::int AS "startHour",
+    (extract(epoch FROM ${t}.end_at - ${t}.start_at) / 3600)::int AS hours,
+    ${t}.status, ${t}.total_price_cents AS "totalPriceCents"`;
 }
 
 /**
@@ -77,4 +80,52 @@ export async function insertBooking(b: {
     [b.courtId, b.userId, b.date, b.startHour, b.hours, b.totalPriceCents, FACILITY_TIMEZONE],
   );
   return rows[0]!;
+}
+
+/** What the cancel rules need, plus the database clock. */
+export async function findBookingForCancel(
+  id: number,
+): Promise<{ userId: number; status: Booking["status"]; startAt: Date; now: Date } | undefined> {
+  const { rows } = await pool.query(
+    `SELECT user_id AS "userId", status, start_at AS "startAt", now() AS now FROM bookings WHERE id = $1`,
+    [id],
+  );
+  return rows[0];
+}
+
+/**
+ * Cancelling only changes the status: the row (and the history) stays.
+ * Returns undefined if the booking was not confirmed any more (e.g. cancelled by a parallel request).
+ */
+export async function cancelBooking(id: number): Promise<Booking | undefined> {
+  const { rows } = await pool.query<Booking>(
+    `UPDATE bookings SET status = 'cancelled'
+     WHERE id = $1 AND status = 'confirmed'
+     RETURNING ${bookingColumns("$2")}`,
+    [id, FACILITY_TIMEZONE],
+  );
+  return rows[0];
+}
+
+export interface UserBooking extends Booking {
+  courtName: string;
+}
+
+/**
+ * A user's bookings, split by end_at: a booking that is going on right now is still upcoming.
+ * Upcoming: soonest first. Past: most recent first. Cancelled ones are included with their status.
+ */
+export async function listUserBookings(userId: number): Promise<{ upcoming: UserBooking[]; past: UserBooking[] }> {
+  const { rows } = await pool.query<UserBooking & { isUpcoming: boolean }>(
+    `SELECT ${bookingColumns("$2", "b")}, c.name AS "courtName", b.end_at > now() AS "isUpcoming"
+     FROM bookings b JOIN courts c ON c.id = b.court_id
+     WHERE b.user_id = $1
+     ORDER BY b.start_at`,
+    [userId, FACILITY_TIMEZONE],
+  );
+  const strip = ({ isUpcoming: _, ...booking }: UserBooking & { isUpcoming: boolean }): UserBooking => booking;
+  return {
+    upcoming: rows.filter((r) => r.isUpcoming).map(strip),
+    past: rows.filter((r) => !r.isUpcoming).map(strip).reverse(),
+  };
 }

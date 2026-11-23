@@ -148,6 +148,14 @@ describe("bad requests", () => {
     assert.equal((await book(token, { courtId, startHour: 18, hours: 1 })).status, 400);
   });
 
+  test("dates are checked by our validation, never left for Postgres to reject (that would be a 500)", async () => {
+    const { courtId, token } = await setup();
+    for (const date of ["2026-02-30", "tomorrow"]) {
+      assert.equal((await book(token, { courtId, date, startHour: 18, hours: 1 })).status, 400, date);
+      assert.equal((await api("GET", `/courts/${courtId}/availability?date=${date}`, { token })).status, 400, date);
+    }
+  });
+
   test("no token → 401", async () => {
     assert.equal((await api("POST", "/bookings", { body: {} })).status, 401);
   });

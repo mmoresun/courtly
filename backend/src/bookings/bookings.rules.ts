@@ -71,3 +71,14 @@ export function bookingRuleViolation(input: {
 function hh(hour: number): string {
   return `${String(hour).padStart(2, "0")}:00`;
 }
+
+export const CANCELLATION_WINDOW_HOURS = 2;
+
+/**
+ * A booking can be cancelled while at least 2 hours remain before it starts.
+ * Exactly 2:00 before is still allowed; one millisecond later it isn't.
+ * Works on absolute instants, so time zones don't matter here.
+ */
+export function canCancel(startAt: Date, now: Date): boolean {
+  return startAt.getTime() - now.getTime() >= CANCELLATION_WINDOW_HOURS * 60 * 60 * 1000;
+}
