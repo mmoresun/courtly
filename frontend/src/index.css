@@ -178,3 +178,61 @@ a.button {
 .sport {
   text-transform: capitalize;
 }
+
+.notice {
+  color: var(--free-line);
+  margin: 0;
+}
+
+.date-bar {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  align-items: center;
+}
+
+.date-bar input {
+  width: auto;
+}
+
+.slots {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(96px, 1fr));
+  gap: 8px;
+}
+
+button.slot {
+  width: 100%;
+  display: grid;
+  gap: 2px;
+  background: var(--free);
+  border-color: var(--free-line);
+  color: var(--text);
+}
+
+button.slot:disabled {
+  background: var(--taken);
+  border-color: var(--line);
+  color: var(--muted);
+  opacity: 1;
+}
+
+button.slot.selected {
+  background: var(--accent);
+  border-color: var(--accent);
+  color: var(--accent-text);
+}
+
+button.slot small {
+  font-size: 0.75rem;
+}
+
+.book-bar {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 12px;
+}
