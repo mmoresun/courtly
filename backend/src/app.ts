@@ -1,5 +1,5 @@
 import express from "express";
-import { authRouter, requireAuth, requireRole } from "./auth";
+import { authRouter, meHandler, requireAuth, requireRole } from "./auth";
 import { bookingsRouter } from "./bookings/bookings.routes";
 import { adminCourtsRouter, courtsRouter } from "./courts/courts.routes";
 import { pool } from "./db";
@@ -20,6 +20,7 @@ app.use("/api/auth", authRouter);
 app.use("/api", requireAuth);
 app.use("/api/admin", requireRole("admin"));
 
+app.get("/api/me", meHandler);
 app.use("/api/courts", courtsRouter);
 app.use("/api/bookings", bookingsRouter);
 app.use("/api/admin/courts", adminCourtsRouter);

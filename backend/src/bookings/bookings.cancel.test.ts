@@ -123,6 +123,18 @@ describe("cancelling", () => {
 });
 
 describe("my bookings (upcoming and past)", () => {
+  test("Bob's list contains none of Alice's bookings", async () => {
+    const court = await createCourt();
+    const alice = await createUser();
+    const bob = await createUser();
+    await bookingStartingIn(5, alice, court.id);
+    await bookingStartingIn(-5, alice, court.id);
+    const bobs = await bookingStartingIn(8, bob, court.id);
+
+    const { body } = await api("GET", "/bookings", { token: tokenFor(bob) });
+    assert.deepEqual([...body.upcoming, ...body.past].map((b: { id: number }) => b.id), [bobs]);
+  });
+
   test("only my own bookings, split by end time; a booking going on right now is upcoming", async () => {
     const { userId, token, courtId } = await setup();
     const other = await createUser();
