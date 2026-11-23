@@ -23,6 +23,11 @@ export const errorHandler: ErrorRequestHandler = (err, _req, res, _next) => {
     res.status(err.status).json({ error: err.message });
     return;
   }
+  // A CHECK constraint rejected the data: the request asked for something invalid → client error.
+  if (err?.code === "23514") {
+    res.status(400).json({ error: `Invalid data (rule ${err.constraint} violated)` });
+    return;
+  }
   if (err?.type === "entity.parse.failed") {
     res.status(400).json({ error: "Malformed JSON body" });
     return;
