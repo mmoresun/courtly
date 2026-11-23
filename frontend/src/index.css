@@ -268,3 +268,31 @@ button.slot small {
   background: var(--taken);
   font-size: 0.8rem;
 }
+
+.revenue {
+  display: block;
+  margin: 0;
+}
+
+.table-wrap {
+  overflow-x: auto;
+}
+
+table {
+  width: 100%;
+  border-collapse: collapse;
+  background: var(--card);
+}
+
+th,
+td {
+  text-align: left;
+  padding: 8px;
+  border-bottom: 1px solid var(--line);
+  white-space: nowrap;
+}
+
+tr.cancelled td {
+  color: var(--muted);
+  text-decoration: line-through;
+}

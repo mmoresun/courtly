@@ -1,18 +1,8 @@
 import { useState } from "react";
 import { formatHour, formatPrice, request, type Booking, type Court, type Slot } from "../api";
+import { DateBar } from "../DateBar";
 import { navigate } from "../router";
 import { useApi } from "../useApi";
-
-/**
- * "2026-11-24" ± n days, or null if `date` isn't a real date. (JS would quietly turn "2026-02-30"
- * into March 2; the API rejects such a date, and the day arrows are disabled.)
- */
-function addDays(date: string, n: number): string | null {
-  const d = new Date(`${date}T00:00:00Z`);
-  if (Number.isNaN(d.getTime()) || d.toISOString().slice(0, 10) !== date) return null;
-  d.setUTCDate(d.getUTCDate() + n);
-  return d.toISOString().slice(0, 10);
-}
 
 /**
  * One court, one day. The date lives in the URL (?date=…): changing it navigates, so a link
@@ -29,8 +19,6 @@ export function CourtDay({ courtId, date }: { courtId: number; date: string }) {
 
   const court = courts.data?.find((c) => c.id === courtId);
   const goTo = (newDate: string) => navigate(`/courts/${courtId}?date=${newDate}`);
-  const previousDay = addDays(date, -1);
-  const nextDay = addDays(date, 1);
 
   async function book(hours: 1 | 2) {
     if (selected === null) return;
@@ -78,15 +66,7 @@ export function CourtDay({ courtId, date }: { courtId: number; date: string }) {
         {formatPrice(court.hourlyPriceCents)} / hour · times are facility local time
       </p>
 
-      <div className="date-bar">
-        <button type="button" className="secondary" disabled={!previousDay} onClick={() => previousDay && goTo(previousDay)}>
-          ← Previous day
-        </button>
-        <input type="date" value={date} onChange={(e) => e.target.value && goTo(e.target.value)} aria-label="Date" />
-        <button type="button" className="secondary" disabled={!nextDay} onClick={() => nextDay && goTo(nextDay)}>
-          Next day →
-        </button>
-      </div>
+      <DateBar date={date} onChange={goTo} />
 
       {message && <p className={message.ok ? "notice" : "error"}>{message.text}{message.ok && <> <a href="#/bookings">My bookings</a></>}</p>}
 
