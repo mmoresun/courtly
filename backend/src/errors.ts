@@ -23,6 +23,11 @@ export const errorHandler: ErrorRequestHandler = (err, _req, res, _next) => {
     res.status(err.status).json({ error: err.message });
     return;
   }
+  // The exclusion constraint bookings_no_overlap: another confirmed booking overlaps this one.
+  if (err?.code === "23P01") {
+    res.status(409).json({ error: "This court is already booked for that time" });
+    return;
+  }
   // A CHECK constraint rejected the data: the request asked for something invalid → 400.
   // But our validation should have caught it first, so log it as a bug. The constraint name
   // is an internal detail: it goes to the log, not to the client.

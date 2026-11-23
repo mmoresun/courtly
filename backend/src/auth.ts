@@ -40,12 +40,12 @@ authRouter.post("/login", async (req, res) => {
     throw new HttpError(401, "Invalid email or password");
   }
 
-  const token = jwt.sign({ role: user.role }, config.jwtSecret, {
-    subject: String(user.id),
-    expiresIn: TOKEN_TTL,
-  });
-  res.json({ token, user: { id: user.id, name: user.name, role: user.role } });
+  res.json({ token: signToken(user), user: { id: user.id, name: user.name, role: user.role } });
 });
+
+export function signToken(user: AuthUser): string {
+  return jwt.sign({ role: user.role }, config.jwtSecret, { subject: String(user.id), expiresIn: TOKEN_TTL });
+}
 
 export const requireAuth: RequestHandler = (req, _res, next) => {
   const header = req.headers.authorization;

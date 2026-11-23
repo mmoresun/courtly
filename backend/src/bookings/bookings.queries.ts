@@ -33,3 +33,48 @@ export async function takenHours(courtId: number, date: string): Promise<number[
   );
   return rows.map((r) => r.hour);
 }
+
+export interface Booking {
+  id: number;
+  courtId: number;
+  userId: number;
+  date: string; // facility-local
+  startHour: number; // facility-local
+  hours: number;
+  status: "confirmed" | "cancelled";
+  totalPriceCents: number;
+}
+
+/** Columns of a booking, with times turned into facility-local date/hour. $tz is the time zone param. */
+function bookingColumns(tz: string): string {
+  return `
+    id, court_id AS "courtId", user_id AS "userId",
+    to_char(start_at AT TIME ZONE ${tz}, 'YYYY-MM-DD') AS date,
+    extract(hour FROM start_at AT TIME ZONE ${tz})::int AS "startHour",
+    (extract(epoch FROM end_at - start_at) / 3600)::int AS hours,
+    status, total_price_cents AS "totalPriceCents"`;
+}
+
+/**
+ * Inserts a confirmed booking. If it overlaps another confirmed booking of the same court,
+ * the exclusion constraint makes Postgres throw 23P01 (turned into 409 by errorHandler).
+ * end_at = start_at + N real hours (not "local end time"), so a booking on a day when clocks
+ * change still lasts exactly N hours.
+ */
+export async function insertBooking(b: {
+  courtId: number;
+  userId: number;
+  date: string;
+  startHour: number;
+  hours: number;
+  totalPriceCents: number;
+}): Promise<Booking> {
+  const { rows } = await pool.query<Booking>(
+    `INSERT INTO bookings (court_id, user_id, start_at, end_at, total_price_cents)
+     SELECT $1, $2, s.start_at, s.start_at + make_interval(hours => $5), $6
+     FROM (SELECT ($3::date + make_time($4, 0, 0)) AT TIME ZONE $7 AS start_at) AS s
+     RETURNING ${bookingColumns("$7")}`,
+    [b.courtId, b.userId, b.date, b.startHour, b.hours, b.totalPriceCents, FACILITY_TIMEZONE],
+  );
+  return rows[0]!;
+}

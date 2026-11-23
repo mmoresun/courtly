@@ -43,3 +43,31 @@ export function daySlots(input: {
   }
   return slots;
 }
+
+/**
+ * Why a booking of `hours` starting at `startHour` can't be made, or null if it can.
+ * Uses the same firstBookableHour as availability, so what the UI shows and what the API
+ * accepts can't disagree. Overlaps with other bookings are not checked here: the database
+ * constraint does that (see the README).
+ */
+export function bookingRuleViolation(input: {
+  startHour: number;
+  hours: number;
+  opensHour: number;
+  closesHour: number;
+  firstBookableHour: number;
+}): string | null {
+  if (input.startHour < input.firstBookableHour) {
+    return "This time slot has already started or is in the past";
+  }
+  // Every hour of the booking must be inside opening hours: a 2-hour booking from 22:00
+  // ends at 24:00, after a 23:00 closing.
+  if (input.startHour < input.opensHour || input.startHour + input.hours > input.closesHour) {
+    return `The booking must fit within opening hours (${hh(input.opensHour)}–${hh(input.closesHour)})`;
+  }
+  return null;
+}
+
+function hh(hour: number): string {
+  return `${String(hour).padStart(2, "0")}:00`;
+}
