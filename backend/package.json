@@ -6,7 +6,8 @@
   "scripts": {
     "dev": "tsx watch src/index.ts",
     "typecheck": "tsc --noEmit",
-    "migrate": "node-pg-migrate up"
+    "migrate": "node-pg-migrate up",
+    "seed": "tsx src/seed.ts"
   },
   "keywords": [],
   "author": "",
