@@ -20,6 +20,11 @@ export async function listCourts({ includeInactive }: { includeInactive: boolean
   return rows;
 }
 
+export async function findCourt(id: number): Promise<Court | undefined> {
+  const { rows } = await pool.query<Court>(`SELECT ${COURT_COLUMNS} FROM courts WHERE id = $1`, [id]);
+  return rows[0];
+}
+
 export async function insertCourt(c: CourtInput): Promise<Court> {
   const { rows } = await pool.query<Court>(
     `INSERT INTO courts (name, sport, hourly_price_cents, opens_at, closes_at, is_active)

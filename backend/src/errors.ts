@@ -10,6 +10,13 @@ export class HttpError extends Error {
   }
 }
 
+/** Route ids like "/courts/:id". Anything that isn't a positive integer can't exist → 404. */
+export function parseIdParam(value: unknown, notFoundMessage: string): number {
+  const id = Number(value);
+  if (!Number.isSafeInteger(id) || id < 1) throw new HttpError(404, notFoundMessage);
+  return id;
+}
+
 // The single place where errors become HTTP responses.
 export const errorHandler: ErrorRequestHandler = (err, _req, res, _next) => {
   if (err instanceof HttpError) {
