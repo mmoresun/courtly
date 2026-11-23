@@ -129,3 +129,37 @@ export async function listUserBookings(userId: number): Promise<{ upcoming: User
     past: rows.filter((r) => !r.isUpcoming).map(strip).reverse(),
   };
 }
+
+export interface AdminBooking extends UserBooking {
+  userName: string;
+  userEmail: string;
+}
+
+/**
+ * Admin day view: every booking that starts on `date` (a facility-local day) on any court,
+ * inactive courts included, cancelled ones included with their status.
+ * Expected revenue = sum of confirmed bookings, computed by Postgres.
+ * (A booking can't cross midnight: courts close at 23:00 at the latest.)
+ */
+export async function adminDay(date: string): Promise<{ bookings: AdminBooking[]; totalRevenueCents: number }> {
+  const inDay = `b.start_at >= ($1::date::timestamp AT TIME ZONE $2)
+             AND b.start_at < (($1::date + 1)::timestamp AT TIME ZONE $2)`;
+  const [list, revenue] = await Promise.all([
+    pool.query<AdminBooking>(
+      `SELECT ${bookingColumns("$2", "b")}, c.name AS "courtName", u.name AS "userName", u.email AS "userEmail"
+       FROM bookings b
+       JOIN courts c ON c.id = b.court_id
+       JOIN users u ON u.id = b.user_id
+       WHERE ${inDay}
+       ORDER BY b.start_at, c.name`,
+      [date, FACILITY_TIMEZONE],
+    ),
+    pool.query<{ total: number }>(
+      `SELECT coalesce(sum(b.total_price_cents) FILTER (WHERE b.status = 'confirmed'), 0)::int AS total
+       FROM bookings b
+       WHERE ${inDay}`,
+      [date, FACILITY_TIMEZONE],
+    ),
+  ]);
+  return { bookings: list.rows, totalRevenueCents: revenue.rows[0]!.total };
+}

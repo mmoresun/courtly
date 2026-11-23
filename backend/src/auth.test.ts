@@ -14,7 +14,7 @@ useTestServer();
 const court = { name: "New", sport: "padel", hourlyPriceCents: 2000, opensAt: "08:00", closesAt: "22:00", isActive: true };
 
 describe("REQUIRED RULE: roles are enforced on the API, not just hidden in the UI", () => {
-  test("a regular user gets 403 on every admin route: list, create, edit, deactivate", async () => {
+  test("a regular user gets 403 on every admin route: courts list/create/edit/deactivate, bookings day view", async () => {
     const user = tokenFor(await createUser("user"));
     const { id } = await createCourt();
 
@@ -23,6 +23,7 @@ describe("REQUIRED RULE: roles are enforced on the API, not just hidden in the U
       await api("POST", "/admin/courts", { token: user, body: court }),
       await api("PUT", `/admin/courts/${id}`, { token: user, body: { ...court, name: "Hacked" } }),
       await api("PUT", `/admin/courts/${id}`, { token: user, body: { ...court, isActive: false } }),
+      await api("GET", "/admin/bookings?date=2030-06-15", { token: user }),
     ];
     for (const res of attempts) assert.deepEqual(res, { status: 403, body: { error: "Forbidden" } });
 

@@ -2,9 +2,9 @@ import { Router } from "express";
 import { currentUser } from "../auth";
 import { findCourt } from "../courts/courts.queries";
 import { HttpError, parseIdParam } from "../errors";
-import { cancelBooking, facilityNow, findBookingForCancel, insertBooking, listUserBookings } from "./bookings.queries";
+import { adminDay, cancelBooking, facilityNow, findBookingForCancel, insertBooking, listUserBookings } from "./bookings.queries";
 import { bookingRuleViolation, CANCELLATION_WINDOW_HOURS, canCancel, firstBookableHour, hourOf } from "./bookings.rules";
-import { parseBookingRequest } from "./bookings.validation";
+import { parseBookingRequest, parseDate } from "./bookings.validation";
 
 export const bookingsRouter = Router();
 
@@ -58,4 +58,13 @@ bookingsRouter.post("/:id/cancel", async (req, res) => {
   const cancelled = await cancelBooking(id);
   if (!cancelled) throw new HttpError(409, "This booking is already cancelled"); // a parallel cancel won
   res.json(cancelled);
+});
+
+// Admin (mounted under /api/admin, so the admin role is already checked).
+export const adminBookingsRouter = Router();
+
+// GET /api/admin/bookings?date=YYYY-MM-DD → all bookings of that facility day + expected revenue
+adminBookingsRouter.get("/", async (req, res) => {
+  const date = parseDate(req.query.date);
+  res.json({ date, ...(await adminDay(date)) });
 });

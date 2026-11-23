@@ -1,6 +1,6 @@
 import express from "express";
 import { authRouter, meHandler, requireAuth, requireRole } from "./auth";
-import { bookingsRouter } from "./bookings/bookings.routes";
+import { adminBookingsRouter, bookingsRouter } from "./bookings/bookings.routes";
 import { adminCourtsRouter, courtsRouter } from "./courts/courts.routes";
 import { pool } from "./db";
 import { errorHandler, HttpError } from "./errors";
@@ -24,6 +24,7 @@ app.get("/api/me", meHandler);
 app.use("/api/courts", courtsRouter);
 app.use("/api/bookings", bookingsRouter);
 app.use("/api/admin/courts", adminCourtsRouter);
+app.use("/api/admin/bookings", adminBookingsRouter);
 
 app.use((_req, _res) => {
   throw new HttpError(404, "Not found");
