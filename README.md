@@ -27,13 +27,13 @@ On start, the backend container does three things in order:
 2. **seed** – fills in demo data, but only if the database is empty,
 3. **start** – runs the API.
 
-Backend tests: `cd backend && npm test`.
+Backend tests (with the stack running): `docker compose exec backend npm test`.
 
 ## Stack and why
 
 **React + Vite, not Next.js.** Every page is behind a login, so we don't need what Next.js is best at: server-side rendering and SEO. The brief also asks for a separate backend anyway, so Next.js would just be a second server that does nothing useful. Vite is a plain, fast dev setup with fewer moving parts.
 
-**Express, not NestJS.** The API is small (about ten endpoints). NestJS gives you modules, decorators and dependency injection. That helps big teams, but here it would mean more code and more "magic" to explain. The downside of Express is that it doesn't force any structure, so we keep a simple one ourselves (see below). Express 5 also catches errors from `async` handlers by itself.
+**Express, not NestJS.** The API is small. NestJS gives you modules, decorators and dependency injection. That helps big teams, but here it would mean more code and more "magic" to explain. The downside of Express is that it doesn't force any structure, so we keep a simple one ourselves (see below). Express 5 also catches errors from `async` handlers by itself.
 
 **PostgreSQL, not MySQL or MongoDB.** The data is naturally made of tables that point at each other: users, courts, bookings. The deciding reason is one Postgres feature, the *exclusion constraint*. It lets the database itself refuse two bookings that overlap in time (see "No double bookings"). MySQL has nothing like it, and MongoDB would need extra workarounds.
 
@@ -43,10 +43,13 @@ Backend tests: `cd backend && npm test`.
 
 ## How the code is organized
 
-- **One folder per feature** (`src/courts/`, …), split into three files:
+- **One folder per feature** (`src/courts/`, `src/bookings/`), split by job:
   - `*.queries.ts` – all the SQL for this feature,
   - `*.validation.ts` – checks on incoming data, written as plain functions, so they're easy to test,
-  - `*.routes.ts` – the HTTP endpoints, which only glue the other two together.
+  - `*.rules.ts` – business rules as pure functions (no database, no clock),
+  - `*.routes.ts` – the HTTP endpoints, which only glue the others together.
+
+  Login is small enough to live in one file, `src/auth.ts`.
 - **Errors in one place.** Any code can `throw new HttpError(404, "Court not found")`. One error handler (`src/errors.ts`) turns every error into a JSON reply like `{ "error": "..." }`. Errors we didn't expect become a `500` and are logged.
 - **Settings in one place** (`src/config.ts`). The app refuses to start if a required setting such as `JWT_SECRET` is missing, instead of quietly using a default.
 
@@ -55,7 +58,6 @@ Backend tests: `cd backend && npm test`.
 - There is no sign-up. The brief says seeded users are enough, and sign-up would be more code with nothing to test.
 - `POST /api/auth/login` checks the password against its bcrypt hash and returns a **JWT** (a signed token) that is valid for 8 hours. The token holds the user's id and role.
 - A wrong email and a wrong password get the **same** error. Otherwise an attacker could find out which emails exist.
-- The frontend sends the token in the `Authorization: Bearer ...` header. Storing it in `localStorage` is simpler than cookies (no CSRF protection needed). The trade-off: a script injected into the page (XSS) could read the token.
 - **Roles are checked on the server, in one line** in `src/index.ts`:
   ```ts
   app.use("/api", requireAuth);                  // everything below needs a valid token
@@ -78,16 +80,14 @@ Backend tests: `cd backend && npm test`.
 - **Opening hours are whole hours** (`"08:00"`, not `"08:30"`), because the day is split into 1-hour slots. The API checks this, and so does a `CHECK` rule in the database.
 - **Prices are in cents** (`2400` = €24.00). Whole numbers never have rounding errors, unlike decimals such as `0.1 + 0.2`.
 - **Changing a court never changes existing bookings.**
-  - Each booking saves its own total price when it's made, so a new hourly price only affects new bookings.
-  - If a court is deactivated, or its opening hours change, existing bookings still count. Only new bookings must follow the new rules (an inactive court can't be booked). Another option was to block deactivation while a court has future bookings. We chose the simpler rule, which also never takes a booking away from a player.
+  - If a court is deactivated, or its opening hours change, existing bookings still count. Only new bookings must follow the new rules. Another option was to block deactivation while a court has future bookings. We chose the simpler rule, which also never takes a booking away from a player.
 
 ## Time zone
 
 The facility has one time zone, `Europe/Lisbon` (`FACILITY_TIMEZONE` in `src/config.ts`).
 - Opening hours like `08:00–23:00` are local clock times at the facility.
 - Bookings are stored as exact moments in time (`timestamptz`).
-- To turn "Nov 24 at 18:00 at the facility" into an exact moment, we let Postgres do it: `(date + time) AT TIME ZONE 'Europe/Lisbon'`. This stays correct on the days when clocks move for summer time.
-- "A day" (for example, the admin's daily view) always means a day at the facility, not a UTC day.
+- To turn "Nov 24 at 18:00 at the facility" into an exact moment, we let Postgres do it: `(date + time) AT TIME ZONE 'Europe/Lisbon'`.
 
 ## No double bookings
 
