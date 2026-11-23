@@ -23,9 +23,12 @@ export const errorHandler: ErrorRequestHandler = (err, _req, res, _next) => {
     res.status(err.status).json({ error: err.message });
     return;
   }
-  // A CHECK constraint rejected the data: the request asked for something invalid → client error.
+  // A CHECK constraint rejected the data: the request asked for something invalid → 400.
+  // But our validation should have caught it first, so log it as a bug. The constraint name
+  // is an internal detail: it goes to the log, not to the client.
   if (err?.code === "23514") {
-    res.status(400).json({ error: `Invalid data (rule ${err.constraint} violated)` });
+    console.error(`Validation gap: CHECK constraint "${err.constraint}" rejected data`, err);
+    res.status(400).json({ error: "Invalid data" });
     return;
   }
   if (err?.type === "entity.parse.failed") {
