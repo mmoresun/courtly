@@ -1,7 +1,8 @@
 import { useEffect, useState } from "react";
 import { getToken, request, setToken, setUnauthorizedHandler, type User } from "./api";
 import { Login } from "./pages/Login";
-import { navigate, useRoute } from "./router";
+import { Courts } from "./pages/Courts";
+import { navigate, useRoute, type Route } from "./router";
 
 export interface Session {
   user: User;
@@ -55,9 +56,17 @@ export default function App() {
           <button type="button" className="link" onClick={logout}>Log out</button>
         </span>
       </header>
-      <main className="page">
-        <p className="muted">Screen “{route.path}” comes next.</p>
-      </main>
+      <main className="page">{screen(route, session)}</main>
     </>
+  );
+}
+
+/** Which screen the URL asks for. */
+function screen(route: Route, session: Session) {
+  if (route.path === "/") return <Courts facilityToday={session.facilityToday} />;
+  return (
+    <p className="muted">
+      Nothing here yet. <a href="#/">Back to courts</a>
+    </p>
   );
 }
