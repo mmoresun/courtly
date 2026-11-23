@@ -236,3 +236,35 @@ button.slot small {
   align-items: center;
   gap: 12px;
 }
+
+.bookings {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: grid;
+  gap: 8px;
+}
+
+.booking {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: space-between;
+  align-items: center;
+}
+
+.booking p {
+  margin: 4px 0 0;
+}
+
+.booking.cancelled strong {
+  text-decoration: line-through;
+  color: var(--muted);
+}
+
+.badge {
+  margin-left: 8px;
+  padding: 1px 8px;
+  border-radius: 999px;
+  background: var(--taken);
+  font-size: 0.8rem;
+}

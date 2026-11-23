@@ -3,6 +3,7 @@ import { getToken, request, setToken, setUnauthorizedHandler, type User } from "
 import { Login } from "./pages/Login";
 import { CourtDay } from "./pages/CourtDay";
 import { Courts } from "./pages/Courts";
+import { MyBookings } from "./pages/MyBookings";
 import { navigate, useRoute, type Route } from "./router";
 
 export interface Session {
@@ -65,6 +66,8 @@ export default function App() {
 /** Which screen the URL asks for. */
 function screen(route: Route, session: Session) {
   if (route.path === "/") return <Courts facilityToday={session.facilityToday} />;
+
+  if (route.path === "/bookings") return <MyBookings />;
 
   const court = route.path.match(/^\/courts\/(\d+)$/);
   if (court) {
