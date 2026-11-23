@@ -18,6 +18,7 @@ services:
     environment:
       DATABASE_URL: postgres://courtly:courtly@db:5432/courtly
       PORT: 3000
+      JWT_SECRET: dev-only-secret-change-me
     volumes:
       - ./backend/src:/app/src
       - ./backend/migrations:/app/migrations
