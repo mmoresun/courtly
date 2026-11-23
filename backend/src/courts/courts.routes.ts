@@ -1,6 +1,6 @@
 import { Router } from "express";
 import { facilityNow, takenHours } from "../bookings/bookings.queries";
-import { daySlots, hourOf } from "../bookings/bookings.rules";
+import { daySlots, firstBookableHour, hourOf } from "../bookings/bookings.rules";
 import { parseDate } from "../bookings/bookings.validation";
 import { HttpError, parseIdParam } from "../errors";
 import { findCourt, insertCourt, listCourts, updateCourt } from "./courts.queries";
@@ -23,11 +23,10 @@ courtsRouter.get("/:id/availability", async (req, res) => {
 
   const [taken, now] = await Promise.all([takenHours(id, date), facilityNow()]);
   const slots = daySlots({
-    date,
     opensHour: hourOf(court.opensAt),
     closesHour: hourOf(court.closesAt),
     takenHours: taken,
-    now,
+    firstBookableHour: firstBookableHour(date, now),
   });
   res.json({ courtId: id, date, slots });
 });

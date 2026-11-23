@@ -1,27 +1,38 @@
 import { test } from "node:test";
 import assert from "node:assert/strict";
-import { daySlots, type LocalNow } from "./bookings.rules";
+import { daySlots, firstBookableHour } from "./bookings.rules";
 
-const now: LocalNow = { date: "2026-11-24", hour: 9 }; // it's 09:xx on Nov 24 at the facility
-const tomorrow = "2026-11-25";
-
-function statuses(date: string, takenHours: number[] = []) {
-  return daySlots({ date, opensHour: 8, closesHour: 12, takenHours, now }).map((s) => `${s.hour}:${s.status}`);
+/** "8 9x 10" — hours, x = unavailable */
+function slots(takenHours: number[], first = 0): string {
+  return daySlots({ opensHour: 8, closesHour: 12, takenHours, firstBookableHour: first })
+    .map((s) => `${s.hour}${s.available ? "" : "x"}`)
+    .join(" ");
 }
 
 test("slots cover exactly the opening hours: 08–12 gives 8, 9, 10, 11", () => {
-  assert.deepEqual(statuses(tomorrow), ["8:available", "9:available", "10:available", "11:available"]);
+  assert.equal(slots([]), "8 9 10 11");
 });
 
-test("hours covered by bookings are taken", () => {
-  assert.deepEqual(statuses(tomorrow, [9, 10]), ["8:available", "9:taken", "10:taken", "11:available"]);
+test("taken hours are unavailable", () => {
+  assert.equal(slots([9, 10]), "8 9x 10x 11");
 });
 
-test("today: slots that already started are past", () => {
-  // 09:xx now → the 09:00 slot has started, 10:00 hasn't
-  assert.deepEqual(statuses("2026-11-24"), ["8:past", "9:past", "10:available", "11:available"]);
+test("hours before the first bookable hour are unavailable", () => {
+  assert.equal(slots([], 10), "8x 9x 10 11");
+  assert.equal(slots([], 24), "8x 9x 10x 11x");
 });
 
-test("a past day is all past, even where it was booked", () => {
-  assert.deepEqual(statuses("2026-11-23", [10]), ["8:past", "9:past", "10:past", "11:past"]);
+test("first bookable hour: past day → none, future day → all", () => {
+  const now = { date: "2026-11-24", hour: 14 };
+  assert.equal(firstBookableHour("2026-11-23", now), 24);
+  assert.equal(firstBookableHour("2026-11-25", now), 0);
+});
+
+test("today: a slot that has started can't be booked — at 14:00 and 14:59 the first is 15", () => {
+  // now.hour is the hour rounded down, so 14:00 and 14:59 are the same input
+  assert.equal(firstBookableHour("2026-11-24", { date: "2026-11-24", hour: 14 }), 15);
+});
+
+test("today late evening: after 23:00 nothing is left", () => {
+  assert.equal(firstBookableHour("2026-11-24", { date: "2026-11-24", hour: 23 }), 24);
 });

@@ -8,11 +8,9 @@ export interface LocalNow {
   hour: number;
 }
 
-export type SlotStatus = "available" | "taken" | "past";
-
 export interface Slot {
   hour: number; // local start hour: 8 means 08:00–09:00
-  status: SlotStatus;
+  available: boolean;
 }
 
 /** "08:00" → 8 */
@@ -20,28 +18,28 @@ export function hourOf(time: string): number {
   return Number(time.slice(0, 2));
 }
 
-/** A slot can't be booked once it has started. "YYYY-MM-DD" strings compare like dates. */
-export function isPast(date: string, hour: number, now: LocalNow): boolean {
-  return date < now.date || (date === now.date && hour <= now.hour);
+/**
+ * Earliest local hour of `date` that can still be booked.
+ * A slot that has already started can't be booked: at 14:00 and at 14:59 alike, the first one is 15.
+ * "YYYY-MM-DD" strings compare like dates.
+ */
+export function firstBookableHour(date: string, now: LocalNow): number {
+  if (date < now.date) return 24; // past day: nothing
+  if (date > now.date) return 0; // future day: everything
+  return now.hour + 1;
 }
 
-/** One slot per opening hour of the day, each marked available, taken or past. */
+/** One slot per opening hour; available = not started yet and not taken. */
 export function daySlots(input: {
-  date: string;
   opensHour: number;
   closesHour: number;
   takenHours: number[];
-  now: LocalNow;
+  firstBookableHour: number;
 }): Slot[] {
   const taken = new Set(input.takenHours);
   const slots: Slot[] = [];
   for (let hour = input.opensHour; hour < input.closesHour; hour++) {
-    const status: SlotStatus = isPast(input.date, hour, input.now)
-      ? "past"
-      : taken.has(hour)
-        ? "taken"
-        : "available";
-    slots.push({ hour, status });
+    slots.push({ hour, available: hour >= input.firstBookableHour && !taken.has(hour) });
   }
   return slots;
 }
