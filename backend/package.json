@@ -8,7 +8,7 @@
     "typecheck": "tsc --noEmit",
     "migrate": "node-pg-migrate up",
     "seed": "tsx src/seed.ts",
-    "test": "tsx --test \"src/**/*.test.ts\""
+    "test": "DATABASE_URL=$TEST_DATABASE_URL tsx --test --test-concurrency=1 --test-global-setup=src/test/global-setup.mts \"src/**/*.test.ts\""
   },
   "keywords": [],
   "author": "",
