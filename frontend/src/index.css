@@ -296,3 +296,35 @@ tr.cancelled td {
   color: var(--muted);
   text-decoration: line-through;
 }
+
+.actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+
+.court-list .inactive h2 {
+  color: var(--muted);
+}
+
+.court-form {
+  width: 100%; /* the edit form sits in a flex row of the list: take the whole row */
+  grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
+  align-items: end;
+}
+
+.court-form .error,
+.court-form .actions,
+.court-form .checkbox {
+  grid-column: 1 / -1;
+}
+
+label.checkbox {
+  display: flex;
+  gap: 8px;
+  align-items: center;
+}
+
+label.checkbox input {
+  width: auto;
+}

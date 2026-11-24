@@ -1,6 +1,7 @@
 import { useEffect, useState } from "react";
 import { getToken, request, setToken, setUnauthorizedHandler, type User } from "./api";
 import { Login } from "./pages/Login";
+import { AdminCourts } from "./pages/AdminCourts";
 import { AdminDay } from "./pages/AdminDay";
 import { CourtDay } from "./pages/CourtDay";
 import { Courts } from "./pages/Courts";
@@ -52,7 +53,12 @@ export default function App() {
         <nav>
           <a href="#/">Courts</a>
           <a href="#/bookings">My bookings</a>
-          {session.user.role === "admin" && <a href={`#/admin/day?date=${session.facilityToday}`}>Bookings by day</a>}
+          {session.user.role === "admin" && (
+            <>
+              <a href={`#/admin/day?date=${session.facilityToday}`}>Bookings by day</a>
+              <a href="#/admin/courts">Manage courts</a>
+            </>
+          )}
         </nav>
         <span className="who">
           {session.user.name}
@@ -71,6 +77,7 @@ function screen(route: Route, session: Session) {
 
   if (route.path === "/bookings") return <MyBookings />;
   // The admin links are only shown to admins, but the API enforces the role on its own (403).
+  if (route.path === "/admin/courts") return <AdminCourts />;
   if (route.path === "/admin/day") return <AdminDay date={route.query.get("date") ?? session.facilityToday} />;
 
   const court = route.path.match(/^\/courts\/(\d+)$/);
