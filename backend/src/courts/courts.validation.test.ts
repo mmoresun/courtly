@@ -21,9 +21,9 @@ test("accepts a valid court and normalizes name and sport", () => {
 });
 
 test("opening hours must be whole hours", () => {
-  rejects({ ...valid, opensAt: "08:30" }, /opensAt/);
-  rejects({ ...valid, closesAt: "23:15" }, /closesAt/);
-  rejects({ ...valid, opensAt: "8:00" }, /opensAt/);
+  rejects({ ...valid, opensAt: "08:30" }, /Opening time/);
+  rejects({ ...valid, closesAt: "23:15" }, /Closing time/);
+  rejects({ ...valid, opensAt: "8:00" }, /Opening time/);
 });
 
 test("court must open before it closes", () => {
@@ -32,12 +32,12 @@ test("court must open before it closes", () => {
 });
 
 test("price must be a positive whole number of cents", () => {
-  rejects({ ...valid, hourlyPriceCents: 0 }, /hourlyPriceCents/);
-  rejects({ ...valid, hourlyPriceCents: 24.5 }, /hourlyPriceCents/);
-  rejects({ ...valid, hourlyPriceCents: "2400" }, /hourlyPriceCents/);
+  rejects({ ...valid, hourlyPriceCents: 0 }, /Price/);
+  rejects({ ...valid, hourlyPriceCents: 24.5 }, /Price/);
+  rejects({ ...valid, hourlyPriceCents: "2400" }, /Price/);
 });
 
 test("isActive is required, so PUT can never reactivate a court by accident", () => {
   const { isActive: _, ...withoutIsActive } = valid;
-  rejects(withoutIsActive, /isActive/);
+  rejects(withoutIsActive, /Active/);
 });

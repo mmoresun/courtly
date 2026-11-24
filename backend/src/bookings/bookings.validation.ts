@@ -8,7 +8,7 @@ export function parseDate(value: unknown): string {
     const parsed = new Date(`${value}T00:00:00Z`);
     if (!Number.isNaN(parsed.getTime()) && parsed.toISOString().slice(0, 10) === value) return value;
   }
-  throw new HttpError(400, "date must be a real date in YYYY-MM-DD format");
+  throw new HttpError(400, "Date must be a real date in YYYY-MM-DD format");
 }
 
 export interface BookingRequest {
@@ -24,13 +24,13 @@ export function parseBookingRequest(body: unknown): BookingRequest {
 
   const { courtId, startHour, hours } = b;
   if (typeof courtId !== "number" || !Number.isSafeInteger(courtId) || courtId < 1) {
-    throw new HttpError(400, "courtId must be a positive integer");
+    throw new HttpError(400, "Choose a court (courtId must be a positive whole number)");
   }
   const date = parseDate(b.date);
   if (typeof startHour !== "number" || !Number.isInteger(startHour) || startHour < 0 || startHour > 23) {
-    throw new HttpError(400, "startHour must be a whole hour from 0 to 23");
+    throw new HttpError(400, "Start time must be a whole hour from 0 to 23");
   }
-  if (hours !== 1 && hours !== 2) throw new HttpError(400, "hours must be 1 or 2");
+  if (hours !== 1 && hours !== 2) throw new HttpError(400, "A booking lasts 1 or 2 hours");
 
   return { courtId, date, startHour, hours };
 }

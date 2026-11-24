@@ -70,14 +70,14 @@ describe("changing a court never changes existing bookings", () => {
 });
 
 describe("admin input is validated by our code, before any database CHECK", () => {
-  test("bad court fields get a specific 400, never the generic 'Invalid data'", async () => {
+  test("bad court fields get a specific 400 in the words of the form, never the generic 'Invalid data'", async () => {
     const { admin, court, body } = await setup();
     const cases: [Record<string, unknown>, RegExp][] = [
-      [{ ...body, name: "  " }, /name/],
-      [{ ...body, hourlyPriceCents: 0 }, /hourlyPriceCents/],
-      [{ ...body, hourlyPriceCents: -100 }, /hourlyPriceCents/],
-      [{ ...body, opensAt: "20:00", closesAt: "08:00" }, /earlier/],
-      [{ ...body, opensAt: "08:30" }, /whole hour/],
+      [{ ...body, name: "  " }, /^Name is required$/],
+      [{ ...body, hourlyPriceCents: 0 }, /^Price must be a positive amount$/],
+      [{ ...body, hourlyPriceCents: -100 }, /^Price must be a positive amount$/],
+      [{ ...body, opensAt: "20:00", closesAt: "08:00" }, /^Opening time must be earlier than closing time$/],
+      [{ ...body, opensAt: "08:30" }, /^Opening time must be a whole hour, like 08:00$/],
     ];
     for (const [bad, message] of cases) {
       for (const res of [

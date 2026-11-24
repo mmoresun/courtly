@@ -12,32 +12,35 @@ export interface CourtInput {
 // Slots are 1 hour long, so opening hours must be whole hours: "00:00" … "23:00".
 const WHOLE_HOUR = /^([01]\d|2[0-3]):00$/;
 
-/** Validates a full court (used by both create and PUT). Throws 400 on the first bad field. */
+/**
+ * Validates a full court (used by both create and PUT). Throws 400 on the first bad field.
+ * Messages are shown to the admin as is, so they use the words of the form, not field names.
+ */
 export function parseCourtInput(body: unknown): CourtInput {
   const b = (body ?? {}) as Record<string, unknown>;
 
   const name = typeof b.name === "string" ? b.name.trim() : "";
-  if (!name) throw bad("name is required");
+  if (!name) throw bad("Name is required");
 
   const sport = typeof b.sport === "string" ? b.sport.trim().toLowerCase() : "";
-  if (!sport) throw bad("sport is required");
+  if (!sport) throw bad("Sport is required");
 
   const price = b.hourlyPriceCents;
   if (typeof price !== "number" || !Number.isInteger(price) || price <= 0) {
-    throw bad("hourlyPriceCents must be a positive integer (price in cents)");
+    throw bad("Price must be a positive amount");
   }
 
   const { opensAt, closesAt } = b;
   if (typeof opensAt !== "string" || !WHOLE_HOUR.test(opensAt)) {
-    throw bad('opensAt must be a whole hour like "08:00"');
+    throw bad("Opening time must be a whole hour, like 08:00");
   }
   if (typeof closesAt !== "string" || !WHOLE_HOUR.test(closesAt)) {
-    throw bad('closesAt must be a whole hour like "23:00"');
+    throw bad("Closing time must be a whole hour, like 23:00");
   }
   // Same "HH:00" format, so string comparison is time comparison.
-  if (opensAt >= closesAt) throw bad("opensAt must be earlier than closesAt");
+  if (opensAt >= closesAt) throw bad("Opening time must be earlier than closing time");
 
-  if (typeof b.isActive !== "boolean") throw bad("isActive must be true or false");
+  if (typeof b.isActive !== "boolean") throw bad("Active must be true or false");
 
   return { name, sport, hourlyPriceCents: price, opensAt, closesAt, isActive: b.isActive };
 }
