@@ -1,117 +1,29 @@
 # Courtly
 
-A small app for booking sports courts (padel, tennis, …). Players book courts by the hour. An admin manages the courts and sees all bookings.
-
-> Work in progress. This file records the decisions made so far, in plain words.
+Courtly is a sports court booking service. A user picks a court and a date, sees the free slots, books one or two consecutive hours, and can cancel a booking up to 2 hours before it starts. An admin adds, edits, deactivates and reactivates courts, and sees all bookings for a day along with the expected revenue.
 
 ## How to run
 
-```bash
-git clone <repo-url>
-cd courtly
-docker compose up
-```
+You need Docker installed. Clone the repository and run `docker compose up` in its folder: the images are built, migrations are applied, demo data is seeded, and everything starts. The frontend is available at http://localhost:5173. Log in as a user or as the admin. Clicking a name on the login page fills in the form.
 
-Open **http://localhost:5173**.
+Users: `alice@courtly.test`, `bob@courtly.test`. Admin: `admin@courtly.test`. The password for all of them is `courtly123`.
 
-Demo accounts (all use the password `courtly123`):
+## Stack
 
-| Email                | Role  |
-|----------------------|-------|
-| `alice@courtly.test` | user  |
-| `bob@courtly.test`   | user  |
-| `admin@courtly.test` | admin |
+**React + Vite, not Next.** The app doesn't need SEO or SSR: it sits behind a login. The brief requires a separate backend anyway, so with Next there would be two servers. Downside: I write routing and data loading myself, and if public pages for search engines are ever needed, SSR will have to be added.
 
-On start, the backend container does three things in order:
-1. **migrate** – creates or updates the database tables,
-2. **seed** – fills in demo data, but only if the database is empty,
-3. **start** – runs the API.
+**Express, not Nest.** Express is enough for a small project, while Nest would bring more boilerplate. Downside: I organize structure, validation and error handling myself. On a large project with a team, Nest would be more convenient.
 
-Backend tests (with the stack running): `docker compose exec backend npm test`.
+**PostgreSQL.** It has the exclusion constraint (`EXCLUDE USING gist`), which forbids overlapping bookings at the database level. Downside: this is Postgres-specific, so moving to another database would require a different way to enforce it.
 
-## Stack and why
+## How double booking is prevented
 
-**React + Vite, not Next.js.** Every page is behind a login, so we don't need what Next.js is best at: server-side rendering and SEO. The brief also asks for a separate backend anyway, so Next.js would just be a second server that does nothing useful. Vite is a plain, fast dev setup with fewer moving parts.
+The `bookings` table has the `bookings_no_overlap` constraint (`EXCLUDE USING gist`): a court cannot have two active (`confirmed`) bookings with overlapping times. The database itself checks it on every write, so it also works for simultaneous requests: if two users book the same time, the database lets only one through and the other gets `409`. Cancelled bookings don't take part in the check, so their time can be booked again. The constraint lives in `backend/migrations/1794822350605_init-schema.sql`. The test for simultaneous requests is in `backend/src/bookings/bookings.create.test.ts`.
 
-**Express, not NestJS.** The API is small. NestJS gives you modules, decorators and dependency injection. That helps big teams, but here it would mean more code and more "magic" to explain. The downside of Express is that it doesn't force any structure, so we keep a simple one ourselves (see below). Express 5 also catches errors from `async` handlers by itself.
+## What I'd do with more time
 
-**PostgreSQL, not MySQL or MongoDB.** The data is naturally made of tables that point at each other: users, courts, bookings. The deciding reason is one Postgres feature, the *exclusion constraint*. It lets the database itself refuse two bookings that overlap in time (see "No double bookings"). MySQL has nothing like it, and MongoDB would need extra workarounds.
-
-**Plain SQL with `pg`, no ORM.** Our most important rules (no overlapping bookings, time zones) use Postgres features that an ORM would hide. With plain SQL you can read exactly what runs against the database. Migrations are plain `.sql` files too (run by `node-pg-migrate`).
-
-**Few libraries on purpose.** Besides the ones above, the backend only adds `bcryptjs` (to hash passwords) and `jsonwebtoken` (for login tokens). Input checks are small hand-written functions instead of a validation library, because there are only a few fields to check.
-
-## How the code is organized
-
-- **One folder per feature** (`src/courts/`, `src/bookings/`), split by job:
-  - `*.queries.ts` – all the SQL for this feature,
-  - `*.validation.ts` – checks on incoming data, written as plain functions, so they're easy to test,
-  - `*.rules.ts` – business rules as pure functions (no database, no clock),
-  - `*.routes.ts` – the HTTP endpoints, which only glue the others together.
-
-  Login is small enough to live in one file, `src/auth.ts`.
-- **Errors in one place.** Any code can `throw new HttpError(404, "Court not found")`. One error handler (`src/errors.ts`) turns every error into a JSON reply like `{ "error": "..." }`. Errors we didn't expect become a `500` and are logged.
-- **Settings in one place** (`src/config.ts`). The app refuses to start if a required setting such as `JWT_SECRET` is missing, instead of quietly using a default.
-
-## Login and roles
-
-- There is no sign-up. The brief says seeded users are enough, and sign-up would be more code with nothing to test.
-- `POST /api/auth/login` checks the password against its bcrypt hash and returns a **JWT** (a signed token) that is valid for 8 hours. The token holds the user's id and role.
-- A wrong email and a wrong password get the **same** error. Otherwise an attacker could find out which emails exist.
-- **Roles are checked on the server, in one line** in `src/index.ts`:
-  ```ts
-  app.use("/api", requireAuth);                  // everything below needs a valid token
-  app.use("/api/admin", requireRole("admin"));   // everything under /api/admin needs the admin role
-  ```
-  Any new admin endpoint goes under `/api/admin`, so you can't forget to protect it.
-- The role is stored inside the token. So if an admin changes someone's role, it only takes effect after their token expires. That's acceptable for this app.
-
-## Courts
-
-| Method | Path                    | Who        | What                               |
-|--------|-------------------------|------------|------------------------------------|
-| GET    | `/api/courts`           | any user   | active courts only                 |
-| GET    | `/api/admin/courts`     | admin      | all courts, including inactive     |
-| POST   | `/api/admin/courts`     | admin      | create a court                     |
-| PUT    | `/api/admin/courts/:id` | admin      | replace a court (incl. `isActive`) |
-
-- **No delete, only deactivate.** There is no `DELETE` endpoint: to deactivate a court you send `PUT` with `isActive: false`. The database adds a second guard: a booking points at its court, so Postgres won't delete a court that has bookings. Booking history can't be lost.
-- **PUT, not PATCH.** The edit form always sends every field anyway. That way create and edit share one validation function, and we never have to merge old and new values. `isActive` is required, so a request can't switch a court back on by accident.
-- **Opening hours are whole hours** (`"08:00"`, not `"08:30"`), because the day is split into 1-hour slots. The API checks this, and so does a `CHECK` rule in the database.
-- **Prices are in cents** (`2400` = €24.00). Whole numbers never have rounding errors, unlike decimals such as `0.1 + 0.2`.
-- **Changing a court never changes existing bookings.**
-  - If a court is deactivated, or its opening hours change, existing bookings still count. Only new bookings must follow the new rules. Another option was to block deactivation while a court has future bookings. We chose the simpler rule, which also never takes a booking away from a player.
-
-## Time zone
-
-The facility has one time zone, `Europe/Lisbon` (`FACILITY_TIMEZONE` in `src/config.ts`).
-- Opening hours like `08:00–23:00` are local clock times at the facility.
-- Bookings are stored as exact moments in time (`timestamptz`).
-- To turn "Nov 24 at 18:00 at the facility" into an exact moment, we let Postgres do it: `(date + time) AT TIME ZONE 'Europe/Lisbon'`.
-
-## No double bookings
-
-Checking "is this slot free?" in code and then saving is **not** safe. Two requests can both check at the same moment, both see the slot as free, and both save.
-
-So the database itself enforces the rule, with an **exclusion constraint** on the `bookings` table:
-
-```sql
-CONSTRAINT bookings_no_overlap EXCLUDE USING gist (
-  court_id WITH =,
-  tstzrange(start_at, end_at) WITH &&
-) WHERE (status = 'confirmed')
-```
-
-In plain words: *no two confirmed bookings may have the same court **and** overlapping time ranges.* Postgres checks this on every insert, even when two inserts happen at the same instant. One of them succeeds and the other fails. Cancelled bookings are left out, so a cancelled slot can be booked again.
-
-Another `CHECK` rule makes sure every booking lasts exactly 1 or 2 hours.
-
-## Demo data
-
-`backend/src/seed.ts` creates 3 users, 4 courts (one of them inactive) and 8 bookings. Booking dates are counted from today, so the demo always has past, today's and upcoming bookings. The demo also includes:
-- a cancelled booking with a new booking on the same slot,
-- a booking on the inactive court, to show its history is kept.
-
-## Tests
-
-The backend uses Node's built-in test runner (`node:test`), so there's no extra test library. Business rules are plain functions, so most of them can be tested without a database.
+- **SSE for slots.** Right now, to see that a slot has been taken, you have to reload the page or get an error when booking.
+- **Cancellation by the admin.** Useful when a user can't cancel a booking themselves (for example, they lost access and called the venue) or booked a court and didn't show up. The admin could also cancel later than 2 hours before the start.
+- **Payment.** Venues like this almost always need it. It would require a `pending` status: the booking holds the slot while payment is in progress and is released if payment doesn't arrive.
+- **Frontend and e2e tests.** Right now there are only backend tests. An e2e test would check the whole flow "log in → book → cancel" in a browser.
+- **CI on every commit.** Tests and type checks would run automatically, catching breakages before they reach main.
