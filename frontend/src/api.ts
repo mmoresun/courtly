@@ -108,6 +108,7 @@ export function formatDate(date: string): string {
   });
 }
 
+/** 8 → "08:00". Hours past midnight wrap: a 23:00 booking for 2 hours ends at 25 → "01:00". */
 export function formatHour(hour: number): string {
-  return `${String(hour).padStart(2, "0")}:00`;
+  return `${String(hour % 24).padStart(2, "0")}:00`;
 }

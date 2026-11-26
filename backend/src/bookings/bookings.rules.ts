@@ -32,7 +32,17 @@ export function firstBookableHour(date: string, now: LocalNow): number {
   return now.hour + 1;
 }
 
-/** One slot per opening hour; available = not taken and not started yet. */
+/**
+ * Is the court open during the hour starting at `hour` (0–23)?
+ * 08–23: open 8 through 22. 20–02 (closes after midnight): open 20–23 and 0–1. 00–00: always open.
+ * The one place that knows about opening hours: slots and booking checks both use it.
+ */
+export function isOpenHour(hour: number, opensHour: number, closesHour: number): boolean {
+  if (opensHour < closesHour) return hour >= opensHour && hour < closesHour;
+  return hour >= opensHour || hour < closesHour; // open across midnight, or around the clock
+}
+
+/** One slot per open hour of the calendar day, in clock order; available = not taken and not started yet. */
 export function daySlots(input: {
   opensHour: number;
   closesHour: number;
@@ -41,7 +51,8 @@ export function daySlots(input: {
 }): Slot[] {
   const taken = new Set(input.takenHours);
   const slots: Slot[] = [];
-  for (let hour = input.opensHour; hour < input.closesHour; hour++) {
+  for (let hour = 0; hour < 24; hour++) {
+    if (!isOpenHour(hour, input.opensHour, input.closesHour)) continue;
     const status: SlotStatus = taken.has(hour) ? "taken" : hour < input.firstBookableHour ? "past" : "available";
     slots.push({ hour, status });
   }
@@ -64,9 +75,10 @@ export function bookingRuleViolation(input: {
   if (input.startHour < input.firstBookableHour) {
     return "This time slot has already started or is in the past";
   }
-  // Every hour of the booking must be inside opening hours: a 2-hour booking from 22:00
-  // ends at 24:00, after a 23:00 closing.
-  if (input.startHour < input.opensHour || input.startHour + input.hours > input.closesHour) {
+  // Every hour of the booking must be an open hour. A 2-hour booking from 22:00 on an 08–23 court
+  // fails on 23:00; from 23:00 on a 20–02 court its second hour is 00:00 the next day, which is open.
+  const bookingHours = Array.from({ length: input.hours }, (_, i) => (input.startHour + i) % 24);
+  if (!bookingHours.every((h) => isOpenHour(h, input.opensHour, input.closesHour))) {
     return `The booking must fit within opening hours (${hh(input.opensHour)}–${hh(input.closesHour)})`;
   }
   return null;

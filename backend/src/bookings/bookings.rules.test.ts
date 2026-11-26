@@ -1,6 +1,6 @@
 import { describe, test } from "node:test";
 import assert from "node:assert/strict";
-import { daySlots, firstBookableHour } from "./bookings.rules";
+import { daySlots, firstBookableHour, isOpenHour } from "./bookings.rules";
 
 /** "8 9x 10p" — hours; x = taken, p = past */
 function slots(takenHours: number[], first = 0): string {
@@ -20,6 +20,23 @@ describe("REQUIRED RULE: opening hours — availability", () => {
 
   test("slots cover exactly the opening hours: 08–12 gives 8, 9, 10, 11", () => {
     assert.equal(slots([]), "8 9 10 11");
+  });
+
+  test("a court open past midnight, 20:00–02:00: the day's slots are 0, 1 and 20–23, in clock order", () => {
+    const hours = daySlots({ opensHour: 20, closesHour: 2, takenHours: [], firstBookableHour: 0 }).map((s) => s.hour);
+    assert.deepEqual(hours, [0, 1, 20, 21, 22, 23]);
+  });
+
+  test("a court open around the clock, 00:00–00:00, has 24 slots", () => {
+    assert.equal(daySlots({ opensHour: 0, closesHour: 0, takenHours: [], firstBookableHour: 0 }).length, 24);
+  });
+
+  test("isOpenHour: closing is exclusive, both for day and for overnight courts", () => {
+    assert.equal(isOpenHour(22, 8, 23), true);
+    assert.equal(isOpenHour(23, 8, 23), false);
+    assert.equal(isOpenHour(1, 20, 2), true);
+    assert.equal(isOpenHour(2, 20, 2), false);
+    assert.equal(isOpenHour(19, 20, 2), false);
   });
 });
 

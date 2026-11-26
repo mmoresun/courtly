@@ -26,9 +26,9 @@ test("opening hours must be whole hours", () => {
   rejects({ ...valid, opensAt: "8:00" }, /Opening time/);
 });
 
-test("court must open before it closes", () => {
-  rejects({ ...valid, opensAt: "10:00", closesAt: "10:00" }, /earlier/);
-  rejects({ ...valid, opensAt: "22:00", closesAt: "08:00" }, /earlier/);
+test("closing earlier than opening is a court open past midnight; the same time is around the clock", () => {
+  assert.equal(parseCourtInput({ ...valid, opensAt: "20:00", closesAt: "02:00" }).closesAt, "02:00");
+  assert.equal(parseCourtInput({ ...valid, opensAt: "00:00", closesAt: "00:00" }).opensAt, "00:00");
 });
 
 test("price must be a positive whole number of cents", () => {

@@ -86,6 +86,25 @@ describe("REQUIRED RULE: opening hours — booking", () => {
     assert.equal((await book(token, { courtId, date: DAY, startHour: 21, hours: 2 })).status, 201);
   });
 
+  test("court open 20:00–02:00: 23:00 for 2 hours runs past midnight and takes 00:00 of the next day", async () => {
+    const { courtId, token } = await setup({ opensAt: "20:00", closesAt: "02:00" });
+    const res = await book(token, { courtId, date: DAY, startHour: 23, hours: 2 });
+    assert.equal(res.status, 201);
+    assert.equal(res.body.totalPriceCents, 4000);
+
+    const nextDay = await api("GET", `/courts/${courtId}/availability?date=2030-06-16`, { token });
+    assert.equal(nextDay.body.slots.find((s: { hour: number }) => s.hour === 0).status, "taken");
+    // ...so a booking for 00:00 that night collides with it
+    assert.equal((await book(token, { courtId, date: "2030-06-16", startHour: 0, hours: 1 })).status, 409);
+  });
+
+  test("court open 20:00–02:00: 01:00 for 2 hours is rejected (02:00 is closed), and so is 19:00", async () => {
+    const { courtId, token } = await setup({ opensAt: "20:00", closesAt: "02:00" });
+    const res = await book(token, { courtId, date: DAY, startHour: 1, hours: 2 });
+    assert.deepEqual(res, { status: 400, body: { error: "The booking must fit within opening hours (20:00–02:00)" } });
+    assert.equal((await book(token, { courtId, date: DAY, startHour: 19, hours: 1 })).status, 400);
+    assert.equal((await book(token, { courtId, date: DAY, startHour: 1, hours: 1 })).status, 201);
+  });
 });
 
 describe("no bookings in the past — the same rule as availability", () => {

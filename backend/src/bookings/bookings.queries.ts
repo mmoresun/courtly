@@ -146,7 +146,7 @@ export interface AdminBooking extends UserBooking {
  * Admin day view: every booking that starts on `date` (a facility-local day) on any court,
  * inactive courts included, cancelled ones included with their status.
  * Expected revenue = sum of confirmed bookings, computed by Postgres.
- * (A booking can't cross midnight: courts close at 23:00 at the latest.)
+ * A booking belongs to the day it starts on, also when it ends after midnight (23:00–01:00).
  */
 export async function adminDay(date: string): Promise<{ bookings: AdminBooking[]; totalRevenueCents: number }> {
   const inDay = `b.start_at >= ($1::date::timestamp AT TIME ZONE $2)

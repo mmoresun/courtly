@@ -37,8 +37,8 @@ export function parseCourtInput(body: unknown): CourtInput {
   if (typeof closesAt !== "string" || !WHOLE_HOUR.test(closesAt)) {
     throw bad("Closing time must be a whole hour, like 23:00");
   }
-  // Same "HH:00" format, so string comparison is time comparison.
-  if (opensAt >= closesAt) throw bad("Opening time must be earlier than closing time");
+  // Any pair is valid: closing earlier than opening means the court closes after midnight,
+  // the same time for both means it never closes (see isOpenHour).
 
   if (typeof b.isActive !== "boolean") throw bad("Active must be true or false");
 

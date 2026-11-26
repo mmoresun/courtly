@@ -1,7 +1,7 @@
 import { useState } from "react";
 import { formatDate, formatHour, formatPrice, request, type Booking, type Court, type Slot } from "../api";
 import { ConfirmModal } from "../ConfirmModal";
-import { DateBar } from "../DateBar";
+import { addDays, DateBar } from "../DateBar";
 import { navigate } from "../router";
 import { useApi } from "../useApi";
 
@@ -17,6 +17,8 @@ import { useApi } from "../useApi";
 export function CourtDay({ courtId, date }: { courtId: number; date: string }) {
   const courts = useApi<Court[]>("/courts");
   const availability = useApi<{ slots: Slot[] }>(`/courts/${courtId}/availability?date=${encodeURIComponent(date)}`);
+  // The next day too: a 2-hour booking from 23:00 on a court open past midnight ends there.
+  const nextDay = useApi<{ slots: Slot[] }>(`/courts/${courtId}/availability?date=${encodeURIComponent(addDays(date, 1) ?? date)}`);
   const [hours, setHours] = useState<1 | 2>(1);
   const [start, setStart] = useState<number | null>(null);
   const [confirming, setConfirming] = useState(false);
@@ -28,7 +30,9 @@ export function CourtDay({ courtId, date }: { courtId: number; date: string }) {
   const goTo = (newDate: string) => navigate(`/courts/${courtId}?date=${newDate}`);
 
   // A start works if every hour of the booking is a free slot (so none is taken or after closing).
-  const isFree = (hour: number) => slots.some((s) => s.hour === hour && s.status === "available");
+  // Hour 24 is 00:00 of the next day.
+  const isFree = (hour: number) =>
+    (hour < 24 ? slots : (nextDay.data?.slots ?? [])).some((s) => s.hour === hour % 24 && s.status === "available");
   const canStart = (hour: number, h: number) => Array.from({ length: h }, (_, i) => hour + i).every(isFree);
 
   function chooseHours(h: 1 | 2) {
@@ -56,6 +60,7 @@ export function CourtDay({ courtId, date }: { courtId: number; date: string }) {
       setConfirming(false);
       setBusy(false);
       availability.reload();
+      nextDay.reload();
     }
   }
 

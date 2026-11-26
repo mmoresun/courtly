@@ -76,7 +76,6 @@ describe("admin input is validated by our code, before any database CHECK", () =
       [{ ...body, name: "  " }, /^Name is required$/],
       [{ ...body, hourlyPriceCents: 0 }, /^Price must be a positive amount$/],
       [{ ...body, hourlyPriceCents: -100 }, /^Price must be a positive amount$/],
-      [{ ...body, opensAt: "20:00", closesAt: "08:00" }, /^Opening time must be earlier than closing time$/],
       [{ ...body, opensAt: "08:30" }, /^Opening time must be a whole hour, like 08:00$/],
     ];
     for (const [bad, message] of cases) {
@@ -87,6 +86,18 @@ describe("admin input is validated by our code, before any database CHECK", () =
         assert.equal(res.status, 400, JSON.stringify(bad));
         assert.match(res.body.error, message);
       }
+    }
+  });
+});
+
+describe("courts open past midnight", () => {
+  test("the database accepts a court open 20:00–02:00 and one open around the clock", async () => {
+    const { admin, body } = await setup();
+    for (const hours of [{ opensAt: "20:00", closesAt: "02:00" }, { opensAt: "00:00", closesAt: "00:00" }]) {
+      const res = await api("POST", "/admin/courts", { token: admin, body: { ...body, ...hours } });
+      assert.equal(res.status, 201);
+      assert.equal(res.body.opensAt, hours.opensAt);
+      assert.equal(res.body.closesAt, hours.closesAt);
     }
   });
 });
