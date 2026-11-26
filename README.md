@@ -8,6 +8,14 @@ You need Docker installed. Clone the repository and run `docker compose up` in i
 
 Users: `alice@courtly.test`, `bob@courtly.test`. Admin: `admin@courtly.test`. The password for all of them is `courtly123`.
 
+## Tests
+
+Backend tests run inside the backend container against a separate test database, so the demo data stays untouched. With the app running (`docker compose up`), run:
+
+```bash
+docker compose exec backend npm test
+```
+
 ## Stack
 
 **React + Vite, not Next.** The app doesn't need SEO or SSR: it sits behind a login. The brief requires a separate backend anyway, so with Next there would be two servers. Downside: I write routing and data loading myself, and if public pages for search engines are ever needed, SSR will have to be added.
@@ -18,7 +26,11 @@ Users: `alice@courtly.test`, `bob@courtly.test`. Admin: `admin@courtly.test`. Th
 
 ## How double booking is prevented
 
-The `bookings` table has the `bookings_no_overlap` constraint (`EXCLUDE USING gist`): a court cannot have two active (`confirmed`) bookings with overlapping times. The database itself checks it on every write, so it also works for simultaneous requests: if two users book the same time, the database lets only one through and the other gets `409`. Cancelled bookings don't take part in the check, so their time can be booked again. The constraint lives in `backend/migrations/1794822350605_init-schema.sql`. The test for simultaneous requests is in `backend/src/bookings/bookings.create.test.ts`.
+The `bookings` table has the `bookings_no_overlap` constraint (`EXCLUDE USING gist`): a court cannot have two active (`confirmed`) bookings with overlapping times. The database itself checks it on every write, so it also works for simultaneous requests: if two users book the same time, the database lets only one through and the other gets `409`. Cancelled bookings don't take part in the check, so their time can be booked again. The constraint lives in `backend/migrations/1794822350605_init-schema.sql`. The tests are in `backend/src/bookings/bookings.create.test.ts`. One of them sends 10 bookings for the same slot at the same moment and checks that exactly one wins and the rest get `409`. To run only the double-booking tests:
+
+```bash
+docker compose exec backend sh -c 'DATABASE_URL=$TEST_DATABASE_URL npx tsx --test --test-global-setup=src/test/global-setup.mts --test-name-pattern="no double bookings" src/bookings/bookings.create.test.ts'
+```
 
 ## What I'd do with more time
 
