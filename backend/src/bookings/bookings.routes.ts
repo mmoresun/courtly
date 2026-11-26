@@ -35,7 +35,7 @@ bookingsRouter.post("/", async (req, res) => {
   res.status(201).json(booking);
 });
 
-// GET /api/bookings → the current user's own bookings: { upcoming, past }
+// GET /api/bookings → the current user's own bookings: { upcoming, past, cancelled }
 bookingsRouter.get("/", async (req, res) => {
   res.json(await listUserBookings(currentUser(req).id));
 });

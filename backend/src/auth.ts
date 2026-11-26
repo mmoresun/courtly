@@ -1,7 +1,7 @@
 import { Router, type Request, type RequestHandler } from "express";
 import bcrypt from "bcryptjs";
 import jwt from "jsonwebtoken";
-import { config } from "./config";
+import { config, FACILITY_TIMEZONE } from "./config";
 import { pool } from "./db";
 import { facilityNow } from "./bookings/bookings.queries";
 import { HttpError } from "./errors";
@@ -79,7 +79,8 @@ export function currentUser(req: Request): AuthUser {
 /**
  * GET /api/me (behind requireAuth): who am I, and what day is it at the facility.
  * The frontend calls it on start: it checks the stored token (401 → back to login) and
- * gets the facility's "today" to preselect, instead of the browser's own date.
+ * gets the facility's "today" to preselect, instead of the browser's own date,
+ * and the facility's time zone for the clock in the header.
  */
 export const meHandler: RequestHandler = async (req, res) => {
   const { id } = currentUser(req);
@@ -88,5 +89,5 @@ export const meHandler: RequestHandler = async (req, res) => {
     [id],
   );
   if (!rows[0]) throw new HttpError(401, "User no longer exists");
-  res.json({ user: rows[0], facilityToday: (await facilityNow()).date });
+  res.json({ user: rows[0], facilityToday: (await facilityNow()).date, facilityTimeZone: FACILITY_TIMEZONE });
 };

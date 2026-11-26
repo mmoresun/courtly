@@ -41,6 +41,7 @@ export interface Booking {
   date: string; // facility-local
   startHour: number; // facility-local
   hours: number;
+  startAt: Date; // the exact moment, for "starts in …" on the client
   status: "confirmed" | "cancelled";
   totalPriceCents: number;
 }
@@ -55,6 +56,7 @@ function bookingColumns(tz: string, t = "bookings"): string {
     to_char(${t}.start_at AT TIME ZONE ${tz}, 'YYYY-MM-DD') AS date,
     extract(hour FROM ${t}.start_at AT TIME ZONE ${tz})::int AS "startHour",
     (extract(epoch FROM ${t}.end_at - ${t}.start_at) / 3600)::int AS hours,
+    ${t}.start_at AS "startAt",
     ${t}.status, ${t}.total_price_cents AS "totalPriceCents"`;
 }
 
@@ -112,10 +114,13 @@ export interface UserBooking extends Booking {
 }
 
 /**
- * A user's bookings, split by end_at: a booking that is going on right now is still upcoming.
- * Upcoming: soonest first. Past: most recent first. Cancelled ones are included with their status.
+ * A user's bookings. Cancelled ones go to their own list, whatever their time.
+ * Confirmed ones are split by end_at: a booking that is going on right now is still upcoming.
+ * Upcoming: soonest first. Past and cancelled: most recent first.
  */
-export async function listUserBookings(userId: number): Promise<{ upcoming: UserBooking[]; past: UserBooking[] }> {
+export async function listUserBookings(
+  userId: number,
+): Promise<{ upcoming: UserBooking[]; past: UserBooking[]; cancelled: UserBooking[] }> {
   const { rows } = await pool.query<UserBooking & { isUpcoming: boolean }>(
     `SELECT ${bookingColumns("$2", "b")}, c.name AS "courtName", b.end_at > now() AS "isUpcoming"
      FROM bookings b JOIN courts c ON c.id = b.court_id
@@ -124,9 +129,11 @@ export async function listUserBookings(userId: number): Promise<{ upcoming: User
     [userId, FACILITY_TIMEZONE],
   );
   const strip = ({ isUpcoming: _, ...booking }: UserBooking & { isUpcoming: boolean }): UserBooking => booking;
+  const confirmed = rows.filter((r) => r.status === "confirmed");
   return {
-    upcoming: rows.filter((r) => r.isUpcoming).map(strip),
-    past: rows.filter((r) => !r.isUpcoming).map(strip).reverse(),
+    upcoming: confirmed.filter((r) => r.isUpcoming).map(strip),
+    past: confirmed.filter((r) => !r.isUpcoming).map(strip).reverse(),
+    cancelled: rows.filter((r) => r.status === "cancelled").map(strip).reverse(),
   };
 }
 

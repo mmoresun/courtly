@@ -85,6 +85,7 @@ describe("REQUIRED RULE: opening hours — booking", () => {
     const { courtId, token } = await setup();
     assert.equal((await book(token, { courtId, date: DAY, startHour: 21, hours: 2 })).status, 201);
   });
+
 });
 
 describe("no bookings in the past — the same rule as availability", () => {
@@ -125,11 +126,12 @@ describe("the server decides who and how much", () => {
     assert.equal(res.body.totalPriceCents, 4800);
   });
 
-  test("the booking comes back in facility-local terms", async () => {
+  test("the booking comes back in facility-local terms, plus the exact start moment", async () => {
     const { courtId, token, userId } = await setup();
     const res = await book(token, { courtId, date: DAY, startHour: 18, hours: 2 });
     assert.deepEqual(res.body, {
       id: res.body.id, courtId, userId, date: DAY, startHour: 18, hours: 2, status: "confirmed", totalPriceCents: 4000,
+      startAt: "2030-06-15T17:00:00.000Z", // 18:00 in Lisbon summer time (UTC+1)
     });
   });
 });

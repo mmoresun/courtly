@@ -71,11 +71,12 @@ describe("authentication", () => {
     assert.deepEqual(unknownEmail, wrongPassword);
   });
 
-  test("GET /me returns the user and the facility's today", async () => {
+  test("GET /me returns the user, the facility's today and its time zone", async () => {
     const userId = await createUser("admin");
     const { status, body } = await api("GET", "/me", { token: tokenFor(userId, "admin") });
     assert.equal(status, 200);
     assert.deepEqual(body.user, { id: userId, name: body.user.name, role: "admin" });
     assert.match(body.facilityToday, /^\d{4}-\d{2}-\d{2}$/);
+    assert.equal(body.facilityTimeZone, "Europe/Lisbon");
   });
 });

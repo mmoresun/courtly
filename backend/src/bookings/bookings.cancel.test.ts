@@ -122,7 +122,7 @@ describe("cancelling", () => {
   });
 });
 
-describe("my bookings (upcoming and past)", () => {
+describe("my bookings (upcoming, past, cancelled)", () => {
   test("Bob's list contains none of Alice's bookings", async () => {
     const court = await createCourt();
     const alice = await createUser();
@@ -132,13 +132,14 @@ describe("my bookings (upcoming and past)", () => {
     const bobs = await bookingStartingIn(8, bob, court.id);
 
     const { body } = await api("GET", "/bookings", { token: tokenFor(bob) });
-    assert.deepEqual([...body.upcoming, ...body.past].map((b: { id: number }) => b.id), [bobs]);
+    assert.deepEqual([...body.upcoming, ...body.past, ...body.cancelled].map((b: { id: number }) => b.id), [bobs]);
   });
 
-  test("only my own bookings, split by end time; a booking going on right now is upcoming", async () => {
+  test("only my own bookings, split by end time; a booking going on right now is upcoming; cancelled ones apart", async () => {
     const { userId, token, courtId } = await setup();
     const other = await createUser();
     const past = await bookingStartingIn(-26, userId, courtId);
+    const cancelledPast = await bookingStartingIn(-50, userId, courtId, "cancelled");
     const running = await bookingStartingIn(-0.5, userId, courtId); // started 30 min ago, ends in 30 min
     const later = await bookingStartingIn(30, userId, courtId);
     const cancelledLater = await bookingStartingIn(50, userId, courtId, "cancelled");
@@ -146,9 +147,9 @@ describe("my bookings (upcoming and past)", () => {
 
     const { status, body } = await api("GET", "/bookings", { token });
     assert.equal(status, 200);
-    assert.deepEqual(body.upcoming.map((b: { id: number }) => b.id), [running, later, cancelledLater]); // soonest first
+    assert.deepEqual(body.upcoming.map((b: { id: number }) => b.id), [running, later]); // soonest first
     assert.deepEqual(body.past.map((b: { id: number }) => b.id), [past]);
-    assert.equal(body.upcoming[2].status, "cancelled");
+    assert.deepEqual(body.cancelled.map((b: { id: number }) => b.id), [cancelledLater, cancelledPast]); // most recent first
     assert.equal(body.upcoming[0].courtName, "Court");
   });
 });
