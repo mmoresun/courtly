@@ -32,6 +32,7 @@ export interface Booking {
   date: string; // facility-local "YYYY-MM-DD"
   startHour: number;
   hours: number;
+  startAt: string; // ISO moment, e.g. "2030-06-15T17:00:00.000Z"
   status: "confirmed" | "cancelled";
   totalPriceCents: number;
 }
@@ -98,6 +99,13 @@ export async function request<T>(method: string, path: string, body?: unknown): 
 
 export function formatPrice(cents: number): string {
   return `€${(cents / 100).toFixed(2)}`;
+}
+
+/** "2026-11-25" → "Wednesday, 25 November 2026". UTC, so the day never shifts with the browser's time zone. */
+export function formatDate(date: string): string {
+  return new Date(`${date}T00:00:00Z`).toLocaleDateString("en-GB", {
+    weekday: "long", day: "numeric", month: "long", year: "numeric", timeZone: "UTC",
+  });
 }
 
 export function formatHour(hour: number): string {
