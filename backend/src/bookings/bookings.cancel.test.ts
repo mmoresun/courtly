@@ -83,10 +83,10 @@ describe("cancelling", () => {
       (await api("GET", `/courts/${courtId}/availability?date=${DAY}`, { token })).body.slots.find((s: { hour: number }) => s.hour === 18);
 
     const { body: booking } = await api("POST", "/bookings", { token, body: { courtId, date: DAY, startHour: 18, hours: 1 } });
-    assert.equal((await slot18()).available, false);
+    assert.equal((await slot18()).status, "taken");
 
     assert.equal((await cancel(booking.id, token)).status, 200);
-    assert.equal((await slot18()).available, true);
+    assert.equal((await slot18()).status, "available");
 
     const rebook = await api("POST", "/bookings", { token, body: { courtId, date: DAY, startHour: 18, hours: 1 } });
     assert.equal(rebook.status, 201);

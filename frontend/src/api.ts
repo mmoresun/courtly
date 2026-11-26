@@ -22,7 +22,7 @@ export interface Court {
 
 export interface Slot {
   hour: number;
-  available: boolean;
+  status: "available" | "taken" | "past"; // same as the backend's SlotStatus
 }
 
 export interface Booking {

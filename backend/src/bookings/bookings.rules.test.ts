@@ -2,10 +2,10 @@ import { describe, test } from "node:test";
 import assert from "node:assert/strict";
 import { daySlots, firstBookableHour } from "./bookings.rules";
 
-/** "8 9x 10" — hours, x = unavailable */
+/** "8 9x 10p" — hours; x = taken, p = past */
 function slots(takenHours: number[], first = 0): string {
   return daySlots({ opensHour: 8, closesHour: 12, takenHours, firstBookableHour: first })
-    .map((s) => `${s.hour}${s.available ? "" : "x"}`)
+    .map((s) => `${s.hour}${{ available: "", taken: "x", past: "p" }[s.status]}`)
     .join(" ");
 }
 
@@ -24,13 +24,17 @@ describe("REQUIRED RULE: opening hours — availability", () => {
 });
 
 describe("availability", () => {
-  test("taken hours are unavailable", () => {
+  test("booked hours are taken", () => {
     assert.equal(slots([9, 10]), "8 9x 10x 11");
   });
 
-  test("hours before the first bookable hour are unavailable", () => {
-    assert.equal(slots([], 10), "8x 9x 10 11");
-    assert.equal(slots([], 24), "8x 9x 10x 11x");
+  test("hours before the first bookable hour are past", () => {
+    assert.equal(slots([], 10), "8p 9p 10 11");
+    assert.equal(slots([], 24), "8p 9p 10p 11p");
+  });
+
+  test("a booked hour stays taken after it has started", () => {
+    assert.equal(slots([9], 10), "8p 9x 10 11");
   });
 });
 

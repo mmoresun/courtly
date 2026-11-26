@@ -101,9 +101,9 @@ describe("no bookings in the past — the same rule as availability", () => {
     const { date } = await facilityNow();
     const { body } = await api("GET", `/courts/${courtId}/availability?date=${date}`, { token });
 
-    for (const slot of body.slots as { hour: number; available: boolean }[]) {
+    for (const slot of body.slots as { hour: number; status: string }[]) {
       const res = await book(token, { courtId, date, startHour: slot.hour, hours: 1 });
-      assert.equal(res.status, slot.available ? 201 : 400, `slot ${slot.hour}: available=${slot.available}`);
+      assert.equal(res.status, slot.status === "available" ? 201 : 400, `slot ${slot.hour}: ${slot.status}`);
     }
   });
 });

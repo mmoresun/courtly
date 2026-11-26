@@ -10,8 +10,11 @@ export interface LocalNow {
 
 export interface Slot {
   hour: number; // local start hour: 8 means 08:00–09:00
-  available: boolean;
+  status: SlotStatus;
 }
+
+/** taken = a confirmed booking covers it; past = it has already started. A taken slot stays "taken" after it starts. */
+export type SlotStatus = "available" | "taken" | "past";
 
 /** "08:00" → 8 */
 export function hourOf(time: string): number {
@@ -29,7 +32,7 @@ export function firstBookableHour(date: string, now: LocalNow): number {
   return now.hour + 1;
 }
 
-/** One slot per opening hour; available = not started yet and not taken. */
+/** One slot per opening hour; available = not taken and not started yet. */
 export function daySlots(input: {
   opensHour: number;
   closesHour: number;
@@ -39,7 +42,8 @@ export function daySlots(input: {
   const taken = new Set(input.takenHours);
   const slots: Slot[] = [];
   for (let hour = input.opensHour; hour < input.closesHour; hour++) {
-    slots.push({ hour, available: hour >= input.firstBookableHour && !taken.has(hour) });
+    const status: SlotStatus = taken.has(hour) ? "taken" : hour < input.firstBookableHour ? "past" : "available";
+    slots.push({ hour, status });
   }
   return slots;
 }

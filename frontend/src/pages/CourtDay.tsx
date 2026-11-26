@@ -53,7 +53,7 @@ export function CourtDay({ courtId, date }: { courtId: number; date: string }) {
 
   const slots = availability.data?.slots ?? [];
   // 2 hours only if the next hour is also a free slot (so it is neither taken nor after closing).
-  const canBookTwo = selected !== null && slots.some((s) => s.hour === selected + 1 && s.available);
+  const canBookTwo = selected !== null && slots.some((s) => s.hour === selected + 1 && s.status === "available");
 
   return (
     <>
@@ -81,11 +81,11 @@ export function CourtDay({ courtId, date }: { courtId: number; date: string }) {
               <button
                 type="button"
                 className={`slot ${slot.hour === selected ? "selected" : ""}`}
-                disabled={!slot.available || busy}
+                disabled={slot.status !== "available" || busy}
                 onClick={() => { setSelected(slot.hour); setMessage(null); }}
               >
                 {formatHour(slot.hour)}
-                <small>{slot.available ? "free" : "unavailable"}</small>
+                <small>{slot.status}</small>
               </button>
             </li>
           ))}
